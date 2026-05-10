@@ -1,2 +1,3 @@
 accessWidener v2 named
 accessible class net/minecraft/client/renderer/RenderStateShard$TransparencyStateShard
+accessible field net/minecraft/client/renderer/SkyRenderer END_SKY_LOCATION Lnet/minecraft/resources/ResourceLocation;

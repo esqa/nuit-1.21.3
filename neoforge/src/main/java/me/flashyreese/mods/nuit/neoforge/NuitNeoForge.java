@@ -13,7 +13,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
@@ -73,7 +73,7 @@ public final class NuitNeoForge {
     }
 
     @SubscribeEvent
-    public void registerClientReloadListener(AddClientReloadListenersEvent event) {
-        event.addListener(ResourceLocation.fromNamespaceAndPath(NuitClient.MOD_ID, "skybox_reader"), NuitClient.skyboxResourceListener());
+    public void registerClientReloadListener(RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener(NuitClient.skyboxResourceListener());
     }
 }

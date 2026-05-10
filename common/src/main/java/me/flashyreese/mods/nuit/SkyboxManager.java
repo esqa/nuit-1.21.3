@@ -87,7 +87,7 @@ public class SkyboxManager implements NuitApi {
 
         if (skybox instanceof TextureRegistrar textureRegistrar) {
             textureRegistrar.getTexturesToRegister().forEach((theResourceLocation) -> {
-                Minecraft.getInstance().getTextureManager().registerAndLoad(theResourceLocation, new SimpleTexture(theResourceLocation));
+                Minecraft.getInstance().getTextureManager().register(theResourceLocation, new SimpleTexture(theResourceLocation));
                 this.preloadedTextures.add(theResourceLocation);
             });
         }

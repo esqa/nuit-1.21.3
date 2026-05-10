@@ -1,8 +1,12 @@
 package me.flashyreese.mods.nuit.skybox.vanilla;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.math.Axis;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -14,9 +18,9 @@ import me.flashyreese.mods.nuit.skybox.AbstractSkybox;
 import me.flashyreese.mods.nuit.skybox.decorations.DecorationBox;
 import net.minecraft.client.Camera;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.CoreShaders;
 import net.minecraft.client.renderer.FogParameters;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.SkyRenderer;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
@@ -44,7 +48,7 @@ public class OverworldSkybox extends AbstractSkybox {
         int skyColor = level.getSkyColor(camera.getPosition(), tickDelta);
 
         // Light Sky
-        ((SkyRenderer) skyRendererAccessor).renderSkyDisc(ARGB.redFloat(skyColor), ARGB.greenFloat(skyColor), ARGB.blueFloat(skyColor));
+        ((SkyRenderer) skyRendererAccessor).renderSkyDisc(ARGB.red(skyColor) / 255.0F, ARGB.green(skyColor) / 255.0F, ARGB.blue(skyColor) / 255.0F);
         if (level.effects().isSunriseOrSunset(timeOfDay)) {
             if (NuitApi.getInstance().getActiveSkyboxes().stream().anyMatch(skybox -> skybox instanceof DecorationBox decorationBox && decorationBox.getProperties().rotation().skyboxRotation())) {
                 sunAngle = Mth.positiveModulo(level.getDayTime() / 24000F + 0.75F, 1);
@@ -70,10 +74,15 @@ public class OverworldSkybox extends AbstractSkybox {
         poseStack.mulPose(Axis.ZP.rotationDegrees(90.0F));
 
         Matrix4f transformationMatrix = poseStack.last().pose();
-        VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderType.sunriseSunset());
 
-        float alpha = ARGB.alphaFloat(sunriseOrSunsetColor) * this.alpha;
-        vertexConsumer.addVertex(transformationMatrix, 0.0F, 100.0F, 0.0F).setColor(sunriseOrSunsetColor);
+        float alpha = (ARGB.alpha(sunriseOrSunsetColor) / 255.0F) * this.alpha;
+
+        RenderSystem.enableBlend();
+        RenderSystem.depthMask(false);
+        RenderSystem.setShader(CoreShaders.POSITION_COLOR);
+
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLE_FAN, DefaultVertexFormat.POSITION_COLOR);
+        builder.addVertex(transformationMatrix, 0.0F, 100.0F, 0.0F).setColor(sunriseOrSunsetColor);
 
         int transparentColor = ARGB.transparent(sunriseOrSunsetColor);
         for (int i = 0; i <= 16; i++) {
@@ -81,21 +90,32 @@ public class OverworldSkybox extends AbstractSkybox {
             float x = Mth.sin(angleRadians);
             float y = Mth.cos(angleRadians);
             float z = -y * 40.0F * alpha;
-            vertexConsumer.addVertex(transformationMatrix, x * 120.0F, y * 120.0F, z).setColor(transparentColor);
+            builder.addVertex(transformationMatrix, x * 120.0F, y * 120.0F, z).setColor(transparentColor);
         }
 
-        bufferSource.endBatch();
+        BufferUploader.drawWithShader(builder.buildOrThrow());
+
+        RenderSystem.depthMask(true);
+        RenderSystem.disableBlend();
+
         poseStack.popPose();
     }
 
     // Fixes https://bugs.mojang.com/browse/MC-279472 (fixed in 1.21.5)
     private void renderDarkSky(SkyRendererAccessor skyRendererAccessor) {
-        RenderSystem.setShaderColor(0.0F, 0.0F, 0.0F, this.alpha);
         Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
         modelViewStack.pushMatrix();
         modelViewStack.translate(0.0F, 12.0F, 0.0F);
-        skyRendererAccessor.getBottomSkyBuffer().drawWithRenderType(RenderType.sky());
-        modelViewStack.popMatrix();
+        RenderSystem.setShaderColor(0.0F, 0.0F, 0.0F, this.alpha);
+        RenderSystem.setShader(CoreShaders.POSITION);
+        skyRendererAccessor.getBottomSkyBuffer().bind();
+        skyRendererAccessor.getBottomSkyBuffer().drawWithShader(
+                RenderSystem.getModelViewMatrix(),
+                RenderSystem.getProjectionMatrix(),
+                RenderSystem.getShader()
+        );
+        com.mojang.blaze3d.vertex.VertexBuffer.unbind();
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        modelViewStack.popMatrix();
     }
 }

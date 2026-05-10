@@ -1,8 +1,13 @@
 package me.flashyreese.mods.nuit.skybox.decorations;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexBuffer;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import me.flashyreese.mods.nuit.components.Blend;
@@ -16,9 +21,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.CoreShaders;
 import net.minecraft.client.renderer.FogParameters;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.ARGB;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 
@@ -70,16 +73,14 @@ public class DecorationBox extends AbstractSkybox {
         // poseStack.mulPose(Axis.ZP.rotationDegrees(IrisCompat.getSunPathRotation()));
         // poseStack.mulPose(Axis.XP.rotationDegrees(level.getSunAngle(tickDelta) * 360.0F * this.properties.rotation().speed()));
 
-        RenderSystem.setShader(CoreShaders.POSITION_TEX);
         if (this.sunEnabled) {
-            this.renderSun(bufferSource, poseStack);
+            this.renderSun(poseStack);
         }
 
         if (this.moonEnabled) {
-            this.renderMoon(level.getMoonPhase(), bufferSource, poseStack);
+            this.renderMoon(level.getMoonPhase(), poseStack);
         }
 
-        bufferSource.endBatch();
         if (this.starsEnabled) {
             this.renderStars(skyRendererAccessor, level, poseStack, fogParameters, tickDelta);
         }
@@ -90,30 +91,34 @@ public class DecorationBox extends AbstractSkybox {
         RenderSystem.disableBlend();
     }
 
-    public void renderSun(MultiBufferSource multiBufferSource, PoseStack poseStack) {
-        VertexConsumer vertexConsumer = multiBufferSource.getBuffer(RenderType.celestial(this.sunTexture));
-        int i = ARGB.white(1F);
+    public void renderSun(PoseStack poseStack) {
         Matrix4f matrix4f = poseStack.last().pose();
-        vertexConsumer.addVertex(matrix4f, -30.0F, 100.0F, -30.0F).setUv(0.0F, 0.0F).setColor(i);
-        vertexConsumer.addVertex(matrix4f, 30.0F, 100.0F, -30.0F).setUv(1.0F, 0.0F).setColor(i);
-        vertexConsumer.addVertex(matrix4f, 30.0F, 100.0F, 30.0F).setUv(1.0F, 1.0F).setColor(i);
-        vertexConsumer.addVertex(matrix4f, -30.0F, 100.0F, 30.0F).setUv(0.0F, 1.0F).setColor(i);
+        RenderSystem.setShader(CoreShaders.POSITION_TEX);
+        RenderSystem.setShaderTexture(0, this.sunTexture);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+        builder.addVertex(matrix4f, -30.0F, 100.0F, -30.0F).setUv(0.0F, 0.0F);
+        builder.addVertex(matrix4f, 30.0F, 100.0F, -30.0F).setUv(1.0F, 0.0F);
+        builder.addVertex(matrix4f, 30.0F, 100.0F, 30.0F).setUv(1.0F, 1.0F);
+        builder.addVertex(matrix4f, -30.0F, 100.0F, 30.0F).setUv(0.0F, 1.0F);
+        BufferUploader.drawWithShader(builder.buildOrThrow());
     }
 
-    public void renderMoon(int moonPhase, MultiBufferSource multiBufferSource, PoseStack poseStack) {
+    public void renderMoon(int moonPhase, PoseStack poseStack) {
         int xCoord = moonPhase % 4;
         int yCoord = moonPhase / 4 % 2;
         float startX = xCoord / 4.0F;
         float startY = yCoord / 2.0F;
         float endX = (xCoord + 1) / 4.0F;
         float endY = (yCoord + 1) / 2.0F;
-        VertexConsumer vertexConsumer = multiBufferSource.getBuffer(RenderType.celestial(this.moonTexture));
-        int p = ARGB.white(1F);
         Matrix4f matrix4f = poseStack.last().pose();
-        vertexConsumer.addVertex(matrix4f, -20.0F, -100.0F, 20.0F).setUv(endX, endY).setColor(p);
-        vertexConsumer.addVertex(matrix4f, 20.0F, -100.0F, 20.0F).setUv(startX, endY).setColor(p);
-        vertexConsumer.addVertex(matrix4f, 20.0F, -100.0F, -20.0F).setUv(startX, startY).setColor(p);
-        vertexConsumer.addVertex(matrix4f, -20.0F, -100.0F, -20.0F).setUv(endX, startY).setColor(p);
+        RenderSystem.setShader(CoreShaders.POSITION_TEX);
+        RenderSystem.setShaderTexture(0, this.moonTexture);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+        builder.addVertex(matrix4f, -20.0F, -100.0F, 20.0F).setUv(endX, endY);
+        builder.addVertex(matrix4f, 20.0F, -100.0F, 20.0F).setUv(startX, endY);
+        builder.addVertex(matrix4f, 20.0F, -100.0F, -20.0F).setUv(startX, startY);
+        builder.addVertex(matrix4f, -20.0F, -100.0F, -20.0F).setUv(endX, startY);
+        BufferUploader.drawWithShader(builder.buildOrThrow());
     }
 
     public void renderStars(SkyRendererAccessor skyRendererAccessor, ClientLevel level, PoseStack poseStack, FogParameters fogParameters, float tickDelta) {
@@ -122,9 +127,17 @@ public class DecorationBox extends AbstractSkybox {
             Matrix4fStack matrix4fStack = RenderSystem.getModelViewStack();
             matrix4fStack.pushMatrix();
             matrix4fStack.mul(poseStack.last().pose());
+            RenderSystem.setShader(CoreShaders.POSITION);
             RenderSystem.setShaderColor(brightness, brightness, brightness, brightness);
             RenderSystem.setShaderFog(FogParameters.NO_FOG);
-            skyRendererAccessor.getStarsBuffer().drawWithRenderType(RenderType.stars());
+            VertexBuffer starBuffer = skyRendererAccessor.getStarsBuffer();
+            starBuffer.bind();
+            starBuffer.drawWithShader(
+                    RenderSystem.getModelViewMatrix(),
+                    RenderSystem.getProjectionMatrix(),
+                    RenderSystem.getShader()
+            );
+            VertexBuffer.unbind();
             RenderSystem.setShaderFog(fogParameters);
             RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
             matrix4fStack.popMatrix();

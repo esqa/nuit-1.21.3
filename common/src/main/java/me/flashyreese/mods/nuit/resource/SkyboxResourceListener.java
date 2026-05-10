@@ -3,7 +3,6 @@ package me.flashyreese.mods.nuit.resource;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
-import com.google.gson.Strictness;
 import me.flashyreese.mods.nuit.NuitClient;
 import me.flashyreese.mods.nuit.api.NuitApi;
 import net.minecraft.resources.ResourceLocation;
@@ -18,7 +17,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
 public class SkyboxResourceListener implements PreparableReloadListener {
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().serializeNulls().setStrictness(Strictness.LENIENT).create();
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().serializeNulls().setLenient().create();
 
     public void readFiles(ResourceManager resourceManager) {
         NuitApi skyboxManager = NuitApi.getInstance();
